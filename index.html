@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SpeedTest by You</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            background-color: #f8f9fa;
+            color: #202124;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+        }
+        .container {
+            text-align: center;
+            padding: 2.5rem;
+            border-radius: 24px;
+            background: #ffffff;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.05);
+            min-width: 300px;
+        }
+        h1 {
+            font-size: 1.1rem;
+            font-weight: 600;
+            margin-bottom: 2rem;
+            color: #5f6368;
+            letter-spacing: 0.5px;
+            text-transform: uppercase;
+        }
+        .speed-container {
+            display: flex;
+            align-items: baseline;
+            justify-content: center;
+            margin-bottom: 1rem;
+        }
+        .speed {
+            font-size: 6rem;
+            font-weight: 700;
+            line-height: 1;
+            color: #000;
+        }
+        .unit {
+            font-size: 1.5rem;
+            font-weight: 500;
+            color: #5f6368;
+            margin-left: 8px;
+        }
+        .status {
+            font-size: 1rem;
+            color: #80868b;
+            height: 1.5rem;
+            margin-bottom: 2rem;
+        }
+        .btn {
+            padding: 14px 36px;
+            font-size: 1.1rem;
+            font-weight: 600;
+            border: none;
+            border-radius: 30px;
+            background-color: #000;
+            color: white;
+            cursor: pointer;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+        .btn:disabled { background-color: #ccc; cursor: not-allowed; }
+        @media (prefers-color-scheme: dark) {
+            body { background-color: #121212; color: #e8eaed; }
+            .container { background: #1e1e1e; box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3); }
+            .speed { color: #fff; }
+            .unit, h1 { color: #9aa0a6; }
+            .btn { background-color: #fff; color: #000; }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Internet Speed</h1>
+        <div class="speed-container">
+            <div class="speed" id="speed">0</div>
+            <div class="unit">Mbps</div>
+        </div>
+        <div class="status" id="status">Ready to test</div>
+        <button class="btn" id="startBtn" onclick="startTest()">Start Test</button>
+    </div>
+
+    <script>
+        const TEST_URL = 'https://speed.cloudflare.com/__down?bytes=25000000';
+
+        async function startTest() {
+            const speedEl = document.getElementById('speed');
+            const statusEl = document.getElementById('status');
+            const btnEl = document.getElementById('startBtn');
+            
+            speedEl.innerText = '0';
+            statusEl.innerText = 'Testing...';
+            btnEl.disabled = true;
+
+            let totalBytes = 0;
+            const startTime = performance.now();
+            let lastReportTime = startTime;
+
+            try {
+                const response = await fetch(TEST_URL, { cache: 'no-store' });
+                if (!response.ok) throw new Error('Network error');
+                const reader = response.body.getReader();
+
+                while(true) {
+                    const {done, value} = await reader.read();
+                    if (done) break;
+                    
+                    totalBytes += value.length;
+                    const now = performance.now();
+                    
+                    if (now - lastReportTime > 75) {
+                        const durationSec = (now - startTime) / 1000;
+                        const speedMbps = ((totalBytes * 8) / durationSec) / 1000000; 
+                        speedEl.innerText = Math.round(speedMbps);
+                        lastReportTime = now;
+                    }
+                }
+                
+                const endTime = performance.now();
+                const durationSec = (endTime - startTime) / 1000;
+                const finalSpeedMbps = ((totalBytes * 8) / durationSec) / 1000000;
+                
+                speedEl.innerText = finalSpeedMbps.toFixed(1);
+                statusEl.innerText = 'Test complete.';
+                
+            } catch (error) {
+                statusEl.innerText = 'Error testing speed.';
+                speedEl.innerText = '-';
+            } finally {
+                btnEl.disabled = false;
+                btnEl.innerText = 'Restart';
+            }
+        }
+    </script>
+</body>
+</html>
